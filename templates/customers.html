@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StockFlow - Customers</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+  h1 { color: #333; }
+  form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; max-width: 400px; }
+  input { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+  button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; background: white; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  th { background: #2563eb; color: white; }
+  .edit-btn { background: #16a34a; margin-right: 5px; }
+  .delete-btn { background: #dc2626; }
+</style>
+</head>
+<body>
+
+<h1>Customers</h1>
+
+<form id="customerForm">
+  <input type="hidden" id="customerId">
+  <input type="text" id="name" placeholder="Name" required>
+  <input type="text" id="phone" placeholder="Phone" required>
+  <input type="text" id="address" placeholder="Address">
+  <button type="submit" id="submitBtn">Add Customer</button>
+</form>
+
+<table>
+  <thead>
+    <tr><th>Name</th><th>Phone</th><th>Address</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="customerTable"></tbody>
+</table>
+
+<script>
+const API = "/api/customers";
+
+async function loadCustomers() {
+  const res = await fetch(API);
+  const customers = await res.json();
+  const tbody = document.getElementById("customerTable");
+  tbody.innerHTML = "";
+  customers.forEach(c => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${c.name}</td>
+        <td>${c.phone}</td>
+        <td>${c.address || ""}</td>
+        <td>
+          <button class="edit-btn" onclick="editCustomer(${c.id}, '${c.name}', '${c.phone}', '${c.address || ""}')">Edit</button>
+          <button class="delete-btn" onclick="deleteCustomer(${c.id})">Delete</button>
+        </td>
+      </tr>`;
+  });
+}
+
+function editCustomer(id, name, phone, address) {
+  document.getElementById("customerId").value = id;
+  document.getElementById("name").value = name;
+  document.getElementById("phone").value = phone;
+  document.getElementById("address").value = address;
+  document.getElementById("submitBtn").textContent = "Update Customer";
+}
+
+async function deleteCustomer(id) {
+  if (!confirm("Delete this customer?")) return;
+  await fetch(`${API}/${id}`, { method: "DELETE" });
+  loadCustomers();
+}
+
+document.getElementById("customerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("customerId").value;
+  const payload = {
+    name: document.getElementById("name").value,
+    phone: document.getElementById("phone").value,
+    address: document.getElementById("address").value,
+  };
+
+  if (id) {
+    await fetch(`${API}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } else {
+    await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  document.getElementById("customerForm").reset();
+  document.getElementById("customerId").value = "";
+  document.getElementById("submitBtn").textContent = "Add Customer";
+  loadCustomers();
+});
+
+loadCustomers();
+</script>
+
+</body>
+</html>
