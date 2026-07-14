@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StockFlow - Items</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+  h1 { color: #333; }
+  form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; max-width: 420px; }
+  input { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+  button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; background: white; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  th { background: #2563eb; color: white; }
+  .edit-btn { background: #16a34a; margin-right: 5px; }
+  .delete-btn { background: #dc2626; margin-right: 5px; }
+  .stock-btn { background: #f59e0b; }
+  .low-stock { background: #fee2e2; }
+</style>
+</head>
+<body>
+
+<h1>Items / Stock</h1>
+
+<form id="itemForm">
+  <input type="hidden" id="itemId">
+  <input type="text" id="name" placeholder="Item Name" required>
+  <input type="number" id="cost_price" placeholder="Cost Price" step="0.01" required>
+  <input type="number" id="sale_price" placeholder="Sale Price" step="0.01" required>
+  <input type="number" id="current_stock" placeholder="Initial Stock" value="0">
+  <input type="number" id="reorder_threshold" placeholder="Reorder Threshold" value="10">
+  <input type="email" id="supplier_email" placeholder="Supplier Email">
+  <button type="submit" id="submitBtn">Add Item</button>
+</form>
+
+<table>
+  <thead>
+    <tr><th>Name</th><th>Cost</th><th>Sale Price</th><th>Stock</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="itemTable"></tbody>
+</table>
+
+<script>
+const API = "/api/items";
+
+async function loadItems() {
+  const res = await fetch(API);
+  const items = await res.json();
+  const tbody = document.getElementById("itemTable");
+  tbody.innerHTML = "";
+  items.forEach(i => {
+    const lowStock = i.current_stock <= i.reorder_threshold;
+    tbody.innerHTML += `
+      <tr class="${lowStock ? 'low-stock' : ''}">
+        <td>${i.name}</td>
+        <td>${i.cost_price}</td>
+        <td>${i.sale_price}</td>
+        <td>${i.current_stock} ${lowStock ? '(LOW)' : ''}</td>
+        <td>
+          <button class="edit-btn" onclick='editItem(${JSON.stringify(i)})'>Edit</button>
+          <button class="stock-btn" onclick="adjustStock(${i.id})">+/- Stock</button>
+          <button class="delete-btn" onclick="deleteItem(${i.id})">Delete</button>
+        </td>
+      </tr>`;
+  });
+}
+
+function editItem(i) {
+  document.getElementById("itemId").value = i.id;
+  document.getElementById("name").value = i.name;
+  document.getElementById("cost_price").value = i.cost_price;
+  document.getElementById("sale_price").value = i.sale_price;
+  document.getElementById("current_stock").value = i.current_stock;
+  document.getElementById("reorder_threshold").value = i.reorder_threshold;
+  document.getElementById("supplier_email").value = i.supplier_email || "";
+  document.getElementById("submitBtn").textContent = "Update Item";
+}
+
+async function adjustStock(id) {
+  const change = prompt("Enter change (positive to add, negative to deduct):");
+  if (change === null || change === "") return;
+  const res = await fetch(`${API}/${id}/stock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ change_qty: parseInt(change), reason: "manual" }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    alert(err.error);
+    return;
+  }
+  loadItems();
+}
+
+async function deleteItem(id) {
+  if (!confirm("Delete this item?")) return;
+  await fetch(`${API}/${id}`, { method: "DELETE" });
+  loadItems();
+}
+
+document.getElementById("itemForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("itemId").value;
+  const payload = {
+    name: document.getElementById("name").value,
+    cost_price: parseFloat(document.getElementById("cost_price").value),
+    sale_price: parseFloat(document.getElementById("sale_price").value),
+    current_stock: parseInt(document.getElementById("current_stock").value || 0),
+    reorder_threshold: parseInt(document.getElementById("reorder_threshold").value || 10),
+    supplier_email: document.getElementById("supplier_email").value,
+  };
+
+  if (id) {
+    await fetch(`${API}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } else {
+    await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  document.getElementById("itemForm").reset();
+  document.getElementById("itemId").value = "";
+  document.getElementById("submitBtn").textContent = "Add Item";
+  loadItems();
+});
+
+loadItems();
+</script>
+
+</body>
+</html>
