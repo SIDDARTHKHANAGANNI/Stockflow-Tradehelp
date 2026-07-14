@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StockFlow - Sales</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+  h1 { color: #333; }
+  form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; max-width: 420px; }
+  select, input { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+  button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; background: white; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  th { background: #2563eb; color: white; }
+  .delete-btn { background: #dc2626; padding: 4px 10px; }
+  .profit { color: #16a34a; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Record Sale</h1>
+
+<form id="saleForm">
+  <select id="customer_id" required><option value="">Select Customer</option></select>
+  <select id="item_id" required><option value="">Select Item</option></select>
+  <input type="number" id="qty" placeholder="Quantity" min="1" required>
+  <button type="submit">Record Sale</button>
+</form>
+
+<h2>Transaction History</h2>
+<table>
+  <thead>
+    <tr><th>Date</th><th>Customer</th><th>Item</th><th>Qty</th><th>Total</th><th>Profit</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="txnTable"></tbody>
+</table>
+
+<script>
+async function loadDropdowns() {
+  const [customers, items] = await Promise.all([
+    fetch("/api/customers").then(r => r.json()),
+    fetch("/api/items").then(r => r.json()),
+  ]);
+
+  const custSelect = document.getElementById("customer_id");
+  custSelect.innerHTML = '<option value="">Select Customer</option>';
+  customers.forEach(c => {
+    custSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+  });
+
+  const itemSelect = document.getElementById("item_id");
+  itemSelect.innerHTML = '<option value="">Select Item</option>';
+  items.forEach(i => {
+    itemSelect.innerHTML += `<option value="${i.id}">${i.name} (stock: ${i.current_stock})</option>`;
+  });
+}
+
+async function loadTransactions() {
+  const res = await fetch("/api/transactions");
+  const txns = await res.json();
+  const tbody = document.getElementById("txnTable");
+  tbody.innerHTML = "";
+  txns.forEach(t => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${t.date}</td>
+        <td>${t.customer}</td>
+        <td>${t.item}</td>
+        <td>${t.qty}</td>
+        <td>${t.total}</td>
+        <td class="profit">${t.profit}</td>
+        <td><button class="delete-btn" onclick="deleteTxn(${t.id})">Undo</button></td>
+      </tr>`;
+  });
+}
+
+async function deleteTxn(id) {
+  if (!confirm("Undo this sale? Stock will be restored.")) return;
+  await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+  loadTransactions();
+  location.reload(); // refresh stock counts in dropdown
+}
+
+document.getElementById("saleForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    customer_id: parseInt(document.getElementById("customer_id").value),
+    item_id: parseInt(document.getElementById("item_id").value),
+    qty: parseInt(document.getElementById("qty").value),
+  };
+
+  const res = await fetch("/api/transactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(err.error);
+    return;
+  }
+
+  document.getElementById("saleForm").reset();
+  loadTransactions();
+  loadDropdowns();
+});
+
+loadDropdowns();
+loadTransactions();
+</script>
+
+</body>
+</html>

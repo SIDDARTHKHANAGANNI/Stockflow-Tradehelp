@@ -23,6 +23,8 @@
 
 <h1>Items / Stock</h1>
 
+<button onclick="sendLowStockAlerts()" style="background:#dc2626; margin-bottom:20px;">Send Low Stock Alerts</button>
+
 <form id="itemForm">
   <input type="hidden" id="itemId">
   <input type="text" id="name" placeholder="Item Name" required>
@@ -130,6 +132,16 @@ document.getElementById("itemForm").addEventListener("submit", async (e) => {
   document.getElementById("submitBtn").textContent = "Add Item";
   loadItems();
 });
+
+async function sendLowStockAlerts() {
+  const res = await fetch("/api/email/low-stock-alert", { method: "POST" });
+  const data = await res.json();
+  let msg = "";
+  if (data.sent && data.sent.length) msg += "Sent: " + data.sent.join(", ") + "\n";
+  if (data.skipped && data.skipped.length) msg += "Skipped: " + data.skipped.join(", ");
+  if (data.message) msg = data.message;
+  alert(msg || "Done");
+}
 
 loadItems();
 </script>
