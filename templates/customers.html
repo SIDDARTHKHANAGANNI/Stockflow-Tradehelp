@@ -3,67 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <title>StockFlow - Customers</title>
-<style>
-  body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
-  h1 { color: #333; }
-  form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; max-width: 400px; }
-  input { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
-  button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  button:hover { background: #1d4ed8; }
-  table { width: 100%; border-collapse: collapse; background: white; }
-  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-  th { background: #2563eb; color: white; }
-  .edit-btn { background: #16a34a; margin-right: 5px; }
-  .delete-btn { background: #dc2626; }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
 <body>
 
-<h1>Customers</h1>
+{% include "_nav.html" %}
 
-<form id="customerForm">
-  <input type="hidden" id="customerId">
-  <input type="text" id="name" placeholder="Name" required>
-  <input type="text" id="phone" placeholder="Phone" required>
-  <input type="text" id="address" placeholder="Address">
-  <button type="submit" id="submitBtn">Add Customer</button>
-</form>
+<div class="page">
+  <div class="eyebrow">Siddarth Traders</div>
+  <h1>Customers</h1>
 
-<table>
-  <thead>
-    <tr><th>Name</th><th>Phone</th><th>Address</th><th>Actions</th></tr>
-  </thead>
-  <tbody id="customerTable"></tbody>
-</table>
+  <div class="layout">
+    <form id="customerForm" class="card">
+      <input type="hidden" id="customerId">
+      <input type="text" id="name" placeholder="Name" required>
+      <input type="text" id="phone" placeholder="Phone" required>
+      <input type="text" id="address" placeholder="Address">
+      <input type="text" id="lat" placeholder="Latitude" readonly>
+      <input type="text" id="lng" placeholder="Longitude" readonly>
+      <div class="hint">Click on map to set location</div>
+      <button type="submit" id="submitBtn">Add Customer</button>
+    </form>
+
+    <div id="map"></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Phone</th><th>Address</th><th>Location</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="customerTable"></tbody>
+  </table>
+</div>
 
 <script>
 const API = "/api/customers";
+
+const map = L.map('map').setView([16.1667, 74.8333], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+let marker;
+let allMarkers = [];
+
+map.on('click', function (e) {
+  const { lat, lng } = e.latlng;
+  document.getElementById("lat").value = lat.toFixed(6);
+  document.getElementById("lng").value = lng.toFixed(6);
+  if (marker) map.removeLayer(marker);
+  marker = L.marker([lat, lng]).addTo(map);
+});
 
 async function loadCustomers() {
   const res = await fetch(API);
   const customers = await res.json();
   const tbody = document.getElementById("customerTable");
   tbody.innerHTML = "";
+
+  allMarkers.forEach(m => map.removeLayer(m));
+  allMarkers = [];
+
   customers.forEach(c => {
+    const hasLocation = c.lat && c.lng;
     tbody.innerHTML += `
       <tr>
         <td>${c.name}</td>
         <td>${c.phone}</td>
         <td>${c.address || ""}</td>
+        <td>${hasLocation ? "📍 set" : "—"}</td>
         <td>
-          <button class="edit-btn" onclick="editCustomer(${c.id}, '${c.name}', '${c.phone}', '${c.address || ""}')">Edit</button>
+          <button class="edit-btn" onclick='editCustomer(${JSON.stringify(c)})'>Edit</button>
           <button class="delete-btn" onclick="deleteCustomer(${c.id})">Delete</button>
         </td>
       </tr>`;
+
+    if (hasLocation) {
+      const m = L.marker([c.lat, c.lng]).addTo(map).bindPopup(c.name);
+      allMarkers.push(m);
+    }
   });
 }
 
-function editCustomer(id, name, phone, address) {
-  document.getElementById("customerId").value = id;
-  document.getElementById("name").value = name;
-  document.getElementById("phone").value = phone;
-  document.getElementById("address").value = address;
+function editCustomer(c) {
+  document.getElementById("customerId").value = c.id;
+  document.getElementById("name").value = c.name;
+  document.getElementById("phone").value = c.phone;
+  document.getElementById("address").value = c.address || "";
+  document.getElementById("lat").value = c.lat || "";
+  document.getElementById("lng").value = c.lng || "";
   document.getElementById("submitBtn").textContent = "Update Customer";
+
+  if (c.lat && c.lng) {
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([c.lat, c.lng]).addTo(map);
+    map.setView([c.lat, c.lng], 14);
+  }
 }
 
 async function deleteCustomer(id) {
@@ -75,10 +112,15 @@ async function deleteCustomer(id) {
 document.getElementById("customerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = document.getElementById("customerId").value;
+  const lat = document.getElementById("lat").value;
+  const lng = document.getElementById("lng").value;
+
   const payload = {
     name: document.getElementById("name").value,
     phone: document.getElementById("phone").value,
     address: document.getElementById("address").value,
+    lat: lat ? parseFloat(lat) : null,
+    lng: lng ? parseFloat(lng) : null,
   };
 
   if (id) {
@@ -98,6 +140,7 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
   document.getElementById("customerForm").reset();
   document.getElementById("customerId").value = "";
   document.getElementById("submitBtn").textContent = "Add Customer";
+  if (marker) { map.removeLayer(marker); marker = null; }
   loadCustomers();
 });
 

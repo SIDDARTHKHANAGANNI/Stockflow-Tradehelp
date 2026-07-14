@@ -1,0 +1,9 @@
+<nav class="navbar">
+  <a href="/dashboard" class="brand">Stock<span>Flow</span></a>
+  <div class="nav-links">
+    <a href="/dashboard" class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
+    <a href="/customers" class="{{ 'active' if active == 'customers' else '' }}">Customers</a>
+    <a href="/items" class="{{ 'active' if active == 'items' else '' }}">Items</a>
+    <a href="/sales" class="{{ 'active' if active == 'sales' else '' }}">Sales</a>
+  </div>
+</nav>

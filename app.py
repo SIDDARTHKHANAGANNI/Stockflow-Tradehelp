@@ -23,19 +23,19 @@ def create_app():
 
     @app.route("/customers")
     def customers_page():
-        return render_template("customers.html")
+        return render_template("customers.html", active="customers")
 
     @app.route("/items")
     def items_page():
-        return render_template("items.html")
+        return render_template("items.html", active="items")
 
     @app.route("/sales")
     def sales_page():
-        return render_template("sales.html")
+        return render_template("sales.html", active="sales")
 
     @app.route("/dashboard")
     def dashboard_page():
-        return render_template("dashboard.html")
+        return render_template("dashboard.html", active="dashboard")
 
     return app
 

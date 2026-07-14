@@ -21,12 +21,34 @@ def send_email(to_email, subject, body):
         server.sendmail(smtp_user, to_email, msg.as_string())
 
 
+@email_bp.route("/low-stock-items", methods=["GET"])
+def low_stock_items():
+    low_items = Item.query.filter(Item.current_stock <= Item.reorder_threshold).all()
+    return jsonify([
+        {
+            "id": i.id,
+            "name": i.name,
+            "current_stock": i.current_stock,
+            "reorder_threshold": i.reorder_threshold,
+            "supplier_email": i.supplier_email,
+        }
+        for i in low_items
+    ])
+
+
 @email_bp.route("/low-stock-alert", methods=["POST"])
 def low_stock_alert():
-    low_items = Item.query.filter(Item.current_stock <= Item.reorder_threshold).all()
+    from flask import request
+    data = request.get_json(silent=True) or {}
+    item_ids = data.get("item_ids")  # optional list of specific item IDs to send for
+
+    query = Item.query.filter(Item.current_stock <= Item.reorder_threshold)
+    if item_ids:
+        query = query.filter(Item.id.in_(item_ids))
+    low_items = query.all()
 
     if not low_items:
-        return jsonify({"message": "no low-stock items, nothing sent"}), 200
+        return jsonify({"message": "no low-stock items selected, nothing sent"}), 200
 
     sent = []
     skipped = []
