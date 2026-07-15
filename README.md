@@ -42,6 +42,11 @@ A full-stack business management system built for a real lubricant distribution 
 - Fully isolated per-user data — every customer, item, and transaction is scoped to its owner
 - Profile page: edit details, change password, delete account (with full data cleanup)
 
+### Deployment & DevOps
+- Dockerized for consistent, portable deployment across environments
+- Dual deployment support: traditional (Render, Gunicorn) and serverless (Vercel)
+- Environment-based configuration, serverless-safe DB connection pooling (Neon pooled endpoint)
+
 ### Design & UX
 - Custom design system — no default browser dialogs; all confirms/prompts use a styled modal matching the app's theme
 - Fully responsive — mobile hamburger nav, stacking layouts, touch-friendly map and forms
@@ -55,6 +60,7 @@ A full-stack business management system built for a real lubricant distribution 
 **Maps:** Leaflet.js + OpenStreetMap
 **PDF Generation:** ReportLab
 **AI:** OpenRouter API (Claude)
+**DevOps:** Docker, Gunicorn
 **Deployment:** Render / Vercel (serverless-compatible)
 
 ## Architecture
@@ -116,6 +122,12 @@ Visit `http://localhost:5000`
 ## Deployment
 
 Supports both traditional (Render, Gunicorn) and serverless (Vercel) deployment out of the box. See `vercel.json` for serverless configuration — uses Neon's pooled connection string for serverless-safe database access.
+
+### Docker
+```bash
+docker build -t stockflow .
+docker run -p 5000:5000 --env-file .env stockflow
+```
 
 ## Author
 
