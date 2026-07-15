@@ -1,7 +1,8 @@
 import smtplib
 from email.mime.text import MIMEText
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 from models import Item
+from auth import login_required, current_user_id
 
 email_bp = Blueprint("email_bp", __name__, url_prefix="/api/email")
 
@@ -22,8 +23,11 @@ def send_email(to_email, subject, body):
 
 
 @email_bp.route("/low-stock-items", methods=["GET"])
+@login_required
 def low_stock_items():
-    low_items = Item.query.filter(Item.current_stock <= Item.reorder_threshold).all()
+    low_items = Item.query.filter(
+        Item.user_id == current_user_id(), Item.current_stock <= Item.reorder_threshold
+    ).all()
     return jsonify([
         {
             "id": i.id,
@@ -37,12 +41,14 @@ def low_stock_items():
 
 
 @email_bp.route("/low-stock-alert", methods=["POST"])
+@login_required
 def low_stock_alert():
-    from flask import request
     data = request.get_json(silent=True) or {}
-    item_ids = data.get("item_ids")  # optional list of specific item IDs to send for
+    item_ids = data.get("item_ids")
 
-    query = Item.query.filter(Item.current_stock <= Item.reorder_threshold)
+    query = Item.query.filter(
+        Item.user_id == current_user_id(), Item.current_stock <= Item.reorder_threshold
+    )
     if item_ids:
         query = query.filter(Item.id.in_(item_ids))
     low_items = query.all()

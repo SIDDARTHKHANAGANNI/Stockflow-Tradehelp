@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from models import db, Item, StockLog
+from auth import login_required, current_user_id
 
 item_bp = Blueprint("item_bp", __name__, url_prefix="/api/items")
 
 
-# CREATE
 @item_bp.route("", methods=["POST"])
+@login_required
 def add_item():
     data = request.get_json()
 
@@ -13,6 +14,7 @@ def add_item():
         return jsonify({"error": "name, cost_price, sale_price required"}), 400
 
     item = Item(
+        user_id=current_user_id(),
         name=data["name"],
         cost_price=data["cost_price"],
         sale_price=data["sale_price"],
@@ -30,26 +32,26 @@ def add_item():
     return jsonify(item.to_dict()), 201
 
 
-# READ ALL
 @item_bp.route("", methods=["GET"])
+@login_required
 def get_items():
-    items = Item.query.all()
+    items = Item.query.filter_by(user_id=current_user_id()).all()
     return jsonify([i.to_dict() for i in items])
 
 
-# READ ONE
 @item_bp.route("/<int:item_id>", methods=["GET"])
+@login_required
 def get_item(item_id):
-    item = Item.query.get(item_id)
+    item = Item.query.filter_by(id=item_id, user_id=current_user_id()).first()
     if not item:
         return jsonify({"error": "item not found"}), 404
     return jsonify(item.to_dict())
 
 
-# UPDATE (details/price)
 @item_bp.route("/<int:item_id>", methods=["PUT"])
+@login_required
 def update_item(item_id):
-    item = Item.query.get(item_id)
+    item = Item.query.filter_by(id=item_id, user_id=current_user_id()).first()
     if not item:
         return jsonify({"error": "item not found"}), 404
 
@@ -64,10 +66,10 @@ def update_item(item_id):
     return jsonify(item.to_dict())
 
 
-# ADJUST STOCK (add or deduct, logged)
 @item_bp.route("/<int:item_id>/stock", methods=["POST"])
+@login_required
 def adjust_stock(item_id):
-    item = Item.query.get(item_id)
+    item = Item.query.filter_by(id=item_id, user_id=current_user_id()).first()
     if not item:
         return jsonify({"error": "item not found"}), 404
 
@@ -89,10 +91,10 @@ def adjust_stock(item_id):
     return jsonify(item.to_dict())
 
 
-# DELETE
 @item_bp.route("/<int:item_id>", methods=["DELETE"])
+@login_required
 def delete_item(item_id):
-    item = Item.query.get(item_id)
+    item = Item.query.filter_by(id=item_id, user_id=current_user_id()).first()
     if not item:
         return jsonify({"error": "item not found"}), 404
 

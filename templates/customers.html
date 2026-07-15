@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockFlow - Customers</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{{ url_for('static', filename='modal.js') }}"></script>
 </head>
 <body>
 
@@ -104,7 +106,8 @@ function editCustomer(c) {
 }
 
 async function deleteCustomer(id) {
-  if (!confirm("Delete this customer?")) return;
+  const ok = await sfConfirm("Delete this customer? This cannot be undone.");
+  if (!ok) return;
   await fetch(`${API}/${id}`, { method: "DELETE" });
   loadCustomers();
 }

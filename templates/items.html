@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockFlow - Items</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='modal.js') }}"></script>
 </head>
 <body>
 
@@ -27,15 +29,15 @@
   </div>
 
   <div class="layout">
-    <form id="itemForm" class="card">
+    <form id="itemForm" class="card form-grid">
       <input type="hidden" id="itemId">
-      <input type="text" id="name" placeholder="Item Name" required>
+      <input type="text" id="name" placeholder="Item Name" class="full-width" required>
       <input type="number" id="cost_price" placeholder="Cost Price" step="0.01" required>
       <input type="number" id="sale_price" placeholder="Sale Price" step="0.01" required>
       <input type="number" id="current_stock" placeholder="Initial Stock" value="0">
       <input type="number" id="reorder_threshold" placeholder="Reorder Threshold" value="10">
-      <input type="email" id="supplier_email" placeholder="Supplier Email">
-      <button type="submit" id="submitBtn">Add Item</button>
+      <input type="email" id="supplier_email" placeholder="Supplier Email" class="full-width">
+      <button type="submit" id="submitBtn" class="full-width">Add Item</button>
     </form>
   </div>
 
@@ -84,23 +86,29 @@ function editItem(i) {
 }
 
 async function adjustStock(id) {
-  const change = prompt("Enter change (positive to add, negative to deduct):");
-  if (change === null || change === "") return;
+  const result = await sfModal({
+    title: "Adjust Stock",
+    fields: [{ key: "change_qty", label: "Change (+ to add, − to deduct)", type: "number", value: 0 }],
+    confirmText: "Apply",
+  });
+  if (result === null || !result.change_qty) return;
+
   const res = await fetch(`${API}/${id}/stock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ change_qty: parseInt(change), reason: "manual" }),
+    body: JSON.stringify({ change_qty: result.change_qty, reason: "manual" }),
   });
   if (!res.ok) {
     const err = await res.json();
-    alert(err.error);
+    await sfAlert(err.error);
     return;
   }
   loadItems();
 }
 
 async function deleteItem(id) {
-  if (!confirm("Delete this item?")) return;
+  const ok = await sfConfirm("Delete this item? Stock history will also be removed.");
+  if (!ok) return;
   await fetch(`${API}/${id}`, { method: "DELETE" });
   loadItems();
 }
@@ -166,7 +174,7 @@ async function confirmSendAlerts() {
   const checked = Array.from(document.querySelectorAll(".low-stock-check:checked")).map(c => parseInt(c.value));
 
   if (checked.length === 0) {
-    alert("Select at least one item.");
+    await sfAlert("Select at least one item.");
     return;
   }
 
@@ -183,7 +191,7 @@ async function confirmSendAlerts() {
   if (data.message) msg = data.message;
 
   closeLowStockModal();
-  alert(msg || "Done");
+  await sfAlert(msg || "Done");
 }
 
 loadItems();

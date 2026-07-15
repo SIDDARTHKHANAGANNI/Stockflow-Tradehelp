@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow - Customer Detail</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='modal.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+{% include "_nav.html" %}
+
+<div class="page">
+  <div class="eyebrow"><a href="/customers" style="color: inherit; text-decoration: none;">&larr; Back to Customers</a></div>
+  <h1 id="customerName">Loading...</h1>
+  <p class="hint" id="customerMeta"></p>
+
+  <div class="cards">
+    <div class="stat-card"><div class="label">Total Revenue</div><div class="value" id="totalRevenue">-</div></div>
+    <div class="stat-card"><div class="label">Total Profit</div><div class="value" id="totalProfit">-</div></div>
+    <div class="stat-card"><div class="label">Pending Amount</div><div class="value" id="totalPending" style="color:#B3462C;">-</div></div>
+  </div>
+
+  <div class="chart-box" style="margin-bottom: 32px;"><canvas id="customerTrendChart"></canvas></div>
+
+  <h2>Purchase History</h2>
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Item</th><th>Qty</th><th>Total</th><th>Paid</th><th>Pending</th><th>Action</th></tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+  </table>
+</div>
+
+<script>
+const customerId = {{ customer_id }};
+
+async function loadDetail() {
+  const res = await fetch(`/api/transactions/customer-summary/${customerId}`);
+  if (!res.ok) {
+    document.getElementById("customerName").textContent = "Customer not found";
+    return;
+  }
+  const data = await res.json();
+
+  document.getElementById("customerName").textContent = data.customer.name;
+  document.getElementById("customerMeta").textContent =
+    `${data.customer.phone}${data.customer.address ? " · " + data.customer.address : ""}`;
+
+  document.getElementById("totalRevenue").textContent = "₹" + data.total_revenue;
+  document.getElementById("totalProfit").textContent = "₹" + data.total_profit;
+  document.getElementById("totalPending").textContent = "₹" + data.total_pending;
+
+  const tbody = document.getElementById("historyTable");
+  tbody.innerHTML = "";
+  data.history.forEach(h => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${h.date}</td>
+        <td>${h.item}</td>
+        <td>${h.qty}</td>
+        <td>₹${h.total}</td>
+        <td>₹${h.amount_paid}</td>
+        <td style="color:${h.pending > 0 ? '#B3462C' : '#3F6B4C'}; font-weight:600;">₹${h.pending}</td>
+        <td>${h.pending > 0 ? `<button class="edit-btn" onclick="markPaid(${h.id}, ${h.total})">Mark Paid</button>` : "—"}</td>
+      </tr>`;
+  });
+
+  if (typeof Chart !== "undefined" && data.monthly && data.monthly.length) {
+    new Chart(document.getElementById("customerTrendChart"), {
+      type: "line",
+      data: {
+        labels: data.monthly.map(m => m.month),
+        datasets: [
+          { label: "Revenue", data: data.monthly.map(m => m.revenue), borderColor: "#16302A", backgroundColor: "#16302A", tension: 0.3 },
+          { label: "Profit", data: data.monthly.map(m => m.profit), borderColor: "#3F6B4C", backgroundColor: "#3F6B4C", tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { title: { display: true, text: `${data.customer.name} — Revenue & Profit Trend` } },
+        scales: { y: { title: { display: true, text: "₹" } } },
+      },
+    });
+  } else if (data.monthly && data.monthly.length === 0) {
+    document.getElementById("customerTrendChart").parentElement.innerHTML =
+      '<p class="hint" style="padding:20px 0;">No sales history yet to chart.</p>';
+  }
+}
+
+async function markPaid(txnId, total) {
+  const result = await sfModal({
+    title: "Update Payment",
+    fields: [{ key: "amount_paid", label: "Total amount paid so far", type: "number", value: total, step: "0.01" }],
+    confirmText: "Save",
+  });
+  if (result === null) return;
+
+  const res = await fetch(`/api/transactions/${txnId}/payment`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount_paid: result.amount_paid }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    await sfAlert(err.error);
+    return;
+  }
+  loadDetail();
+}
+
+loadDetail();
+</script>
+
+</body>
+</html>

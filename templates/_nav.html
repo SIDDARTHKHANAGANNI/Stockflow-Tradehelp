@@ -1,9 +1,12 @@
 <nav class="navbar">
   <a href="/dashboard" class="brand">Stock<span>Flow</span></a>
-  <div class="nav-links">
+  <button class="nav-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">&#9776;</button>
+  <div class="nav-links" id="navLinks">
     <a href="/dashboard" class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
     <a href="/customers" class="{{ 'active' if active == 'customers' else '' }}">Customers</a>
     <a href="/items" class="{{ 'active' if active == 'items' else '' }}">Items</a>
     <a href="/sales" class="{{ 'active' if active == 'sales' else '' }}">Sales</a>
+    <a href="/reports" class="{{ 'active' if active == 'reports' else '' }}">Reports</a>
+    <a href="/profile" class="{{ 'active' if active == 'profile' else '' }}">Profile</a>
   </div>
 </nav>

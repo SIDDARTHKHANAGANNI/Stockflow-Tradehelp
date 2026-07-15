@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow - Login</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .auth-box { width: 380px; }
+  .auth-title { text-align: center; margin-bottom: 4px; }
+  .auth-sub { text-align: center; color: var(--color-text-muted); font-size: 14px; margin-bottom: 24px; }
+  .error-msg { color: var(--color-danger); font-size: 13px; margin: -6px 0 12px 0; display: none; }
+  .switch-link { text-align: center; margin-top: 16px; font-size: 14px; color: var(--color-text-muted); }
+  .switch-link a { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="card auth-box">
+  <h1 class="auth-title">Stock<span style="color:var(--color-accent);">Flow</span></h1>
+  <p class="auth-sub">Siddarth Traders</p>
+
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <p class="error-msg" id="errorMsg"></p>
+    <button type="submit" style="width:100%;">Log In</button>
+  </form>
+
+  <p class="switch-link">Don't have an account? <a href="/signup">Create one</a></p>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errorMsg = document.getElementById("errorMsg");
+  errorMsg.style.display = "none";
+
+  const payload = {
+    username: document.getElementById("username").value,
+    password: document.getElementById("password").value,
+  };
+
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    errorMsg.textContent = err.error;
+    errorMsg.style.display = "block";
+    return;
+  }
+
+  window.location.href = "/dashboard";
+});
+</script>
+
+</body>
+</html>

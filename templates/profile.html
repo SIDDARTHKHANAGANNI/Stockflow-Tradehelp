@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow - Profile</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='modal.js') }}"></script>
+</head>
+<body>
+
+{% include "_nav.html" %}
+
+<div class="page">
+  <div class="eyebrow">Account</div>
+  <h1>Profile</h1>
+
+  <div class="layout">
+    <div class="card" style="flex: 1 1 420px; max-width: 480px;">
+      <h3 style="margin-top:0;">Edit Details</h3>
+      <form id="profileForm">
+        <label class="sf-modal-label">Full Name</label>
+        <input type="text" id="name">
+        <label class="sf-modal-label">Username</label>
+        <input type="text" id="username">
+        <label class="sf-modal-label">New Password <span style="font-weight:400;">(leave blank to keep current)</span></label>
+        <input type="password" id="password" placeholder="New password">
+        <button type="submit">Save Changes</button>
+      </form>
+    </div>
+
+    <div class="card" style="flex: 1 1 320px; max-width: 380px;">
+      <h3 style="margin-top:0;">Account Actions</h3>
+      <p class="hint">Log out of StockFlow on this device.</p>
+      <button onclick="logout()" style="width:100%; margin-bottom:20px;">Log Out</button>
+
+      <p class="hint" style="color: var(--color-danger);">Deleting your account permanently removes all customers, items, and sales history. This cannot be undone.</p>
+      <button class="delete-btn" onclick="deleteAccount()" style="width:100%;">Delete Account</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadProfile() {
+  const res = await fetch("/api/auth/me");
+  const user = await res.json();
+  document.getElementById("name").value = user.name || "";
+  document.getElementById("username").value = user.username || "";
+}
+
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    name: document.getElementById("name").value,
+    username: document.getElementById("username").value,
+  };
+  const password = document.getElementById("password").value;
+  if (password) payload.password = password;
+
+  const res = await fetch("/api/auth/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    await sfAlert(err.error);
+    return;
+  }
+
+  document.getElementById("password").value = "";
+  await sfAlert("Profile updated.");
+});
+
+async function logout() {
+  const ok = await sfConfirm("Log out of StockFlow?");
+  if (!ok) return;
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login";
+}
+
+async function deleteAccount() {
+  const ok = await sfConfirm("This will permanently delete your account and ALL data — customers, items, sales history. This cannot be undone. Continue?", "Delete Account?");
+  if (!ok) return;
+
+  const confirmAgain = await sfConfirm("Are you absolutely sure? Type nothing to cancel, or Confirm to proceed with permanent deletion.", "Final Confirmation");
+  if (!confirmAgain) return;
+
+  await fetch("/api/auth/account", { method: "DELETE" });
+  window.location.href = "/signup";
+}
+
+loadProfile();
+</script>
+
+</body>
+</html>

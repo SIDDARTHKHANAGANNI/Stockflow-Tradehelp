@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StockFlow - Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -19,17 +20,32 @@
     <div class="stat-card"><div class="label">Total Revenue</div><div class="value" id="totalRevenue">-</div></div>
     <div class="stat-card"><div class="label">Total Profit</div><div class="value" id="totalProfit">-</div></div>
     <div class="stat-card"><div class="label">Stock Sold</div><div class="value" id="totalStock">-</div></div>
-    <div class="stat-card"><div class="label">Transactions</div><div class="value" id="totalTxns">-</div></div>
+    <div class="stat-card"><div class="label">Pending Amount</div><div class="value" id="totalPending" style="color:#B3462C;">-</div></div>
   </div>
 
   <div class="charts">
-    <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+    <div class="chart-box"><canvas id="trendChart"></canvas></div>
     <div class="chart-box"><canvas id="itemChart"></canvas></div>
   </div>
 
+  <h2>Business Snapshot</h2>
+  <div class="cards" style="margin-bottom: 32px;">
+    <div class="stat-card"><div class="label">Total Customers</div><div class="value" id="snapCustomers" style="font-size:22px;">-</div></div>
+    <div class="stat-card"><div class="label">Total Items</div><div class="value" id="snapItems" style="font-size:22px;">-</div></div>
+    <div class="stat-card"><div class="label">Low Stock Items</div><div class="value" id="snapLowStock" style="font-size:22px; color:#B3462C;">-</div></div>
+    <div class="stat-card"><div class="label">Avg. Order Value</div><div class="value" id="snapAOV" style="font-size:22px;">-</div></div>
+    <div class="stat-card"><div class="label">Top Customer</div><div class="value" id="snapTopCustomer" style="font-size:18px;">-</div></div>
+    <div class="stat-card"><div class="label">Top Selling Item</div><div class="value" id="snapTopItem" style="font-size:18px;">-</div></div>
+  </div>
+
+  <div style="margin-bottom: 24px;">
+    <a href="/reports"><button class="btn-accent">View Full Reports &amp; Export PDF</button></a>
+  </div>
+
   <h2>Revenue &amp; Profit by Customer</h2>
+  <p class="hint">Click a row to view purchase history, totals, and pending balance</p>
   <table>
-    <thead><tr><th>Customer</th><th>Qty Sold</th><th>Revenue</th><th>Profit</th></tr></thead>
+    <thead><tr><th>Customer</th><th>Qty Sold</th><th>Revenue</th><th>Profit</th><th>Pending</th></tr></thead>
     <tbody id="customerTable"></tbody>
   </table>
 </div>
@@ -40,40 +56,65 @@ async function loadDashboard() {
   document.getElementById("totalRevenue").textContent = "₹" + summary.total_revenue;
   document.getElementById("totalProfit").textContent = "₹" + summary.total_profit;
   document.getElementById("totalStock").textContent = summary.total_stock_sold;
-  document.getElementById("totalTxns").textContent = summary.total_transactions;
+  document.getElementById("totalPending").textContent = "₹" + summary.total_pending;
+
+  const snap = await fetch("/api/analytics/snapshot").then(r => r.json());
+  document.getElementById("snapCustomers").textContent = snap.total_customers;
+  document.getElementById("snapItems").textContent = snap.total_items;
+  document.getElementById("snapLowStock").textContent = snap.low_stock_count;
+  document.getElementById("snapAOV").textContent = "₹" + snap.avg_order_value;
+  document.getElementById("snapTopCustomer").textContent = snap.top_customer;
+  document.getElementById("snapTopItem").textContent = snap.top_item;
 
   const byCustomer = await fetch("/api/analytics/by-customer").then(r => r.json());
   const custBody = document.getElementById("customerTable");
   custBody.innerHTML = "";
   byCustomer.forEach(c => {
     custBody.innerHTML += `
-      <tr>
+      <tr style="cursor:pointer" onclick="window.location.href='/customers/${c.id}'">
         <td>${c.customer}</td>
         <td>${c.total_qty}</td>
         <td>₹${c.revenue}</td>
         <td class="profit">₹${c.profit}</td>
+        <td style="color:${c.pending > 0 ? '#B3462C' : '#3F6B4C'}; font-weight:600;">₹${c.pending}</td>
       </tr>`;
   });
 
   const monthly = await fetch("/api/analytics/monthly").then(r => r.json());
-  new Chart(document.getElementById("monthlyChart"), {
-    type: "line",
-    data: {
-      labels: monthly.map(m => m.month),
-      datasets: [{ label: "Revenue by Month", data: monthly.map(m => m.revenue), borderColor: "#16302A", backgroundColor: "#B8935B", tension: 0.3 }],
-    },
-    options: { responsive: true, plugins: { title: { display: true, text: "Monthly Revenue" } } },
-  });
+
+  if (typeof Chart === "undefined") {
+    document.getElementById("trendChart").parentElement.innerHTML =
+      '<p style="color:#B3462C; padding:20px;">Chart library failed to load. Check your internet connection and refresh.</p>';
+  } else {
+    new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: monthly.map(m => m.month),
+        datasets: [
+          { label: "Revenue", data: monthly.map(m => m.revenue), borderColor: "#16302A", backgroundColor: "#16302A", tension: 0.3 },
+          { label: "Profit", data: monthly.map(m => m.profit), borderColor: "#3F6B4C", backgroundColor: "#3F6B4C", tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { title: { display: true, text: "Revenue & Profit by Month" } },
+        scales: { y: { title: { display: true, text: "₹" } } },
+      },
+    });
+  }
 
   const byItem = await fetch("/api/analytics/by-item").then(r => r.json());
-  new Chart(document.getElementById("itemChart"), {
-    type: "bar",
-    data: {
-      labels: byItem.map(i => i.item),
-      datasets: [{ label: "Qty Sold", data: byItem.map(i => i.total_qty), backgroundColor: "#B8935B" }],
-    },
-    options: { responsive: true, plugins: { title: { display: true, text: "Top Selling Items" } } },
-  });
+  if (typeof Chart !== "undefined") {
+    new Chart(document.getElementById("itemChart"), {
+      type: "bar",
+      data: {
+        labels: byItem.map(i => i.item),
+        datasets: [{ label: "Qty Sold", data: byItem.map(i => i.total_qty), backgroundColor: "#B8935B" }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: "Top Selling Items" } } },
+    });
+  }
 }
 
 loadDashboard();

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow - Reports</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "_nav.html" %}
+
+<div class="page">
+  <div class="eyebrow">Siddarth Traders</div>
+  <h1>Reports</h1>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="form-grid" style="grid-template-columns: repeat(5, 1fr); align-items: end;">
+      <div>
+        <label class="sf-modal-label">From</label>
+        <input type="date" id="startDate">
+      </div>
+      <div>
+        <label class="sf-modal-label">To</label>
+        <input type="date" id="endDate">
+      </div>
+      <div>
+        <label class="sf-modal-label">Customer</label>
+        <select id="customerFilter"><option value="">All Customers</option></select>
+      </div>
+      <div>
+        <label class="sf-modal-label">Item</label>
+        <select id="itemFilter"><option value="">All Items</option></select>
+      </div>
+      <div>
+        <label class="sf-modal-label">Sort</label>
+        <select id="sortFilter">
+          <option value="date_desc">Newest first</option>
+          <option value="date_asc">Oldest first</option>
+          <option value="amount_desc">Amount: high to low</option>
+          <option value="amount_asc">Amount: low to high</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+      <button onclick="applyFilters()">Apply Filters</button>
+      <button class="edit-btn" onclick="quickMonth()">This Month</button>
+      <button class="edit-btn" onclick="clearFilters()" style="background:var(--color-text-muted);">Clear</button>
+      <button class="btn-accent" onclick="downloadPdf()">Download PDF</button>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="stat-card"><div class="label">Total Revenue</div><div class="value" id="repRevenue">-</div></div>
+    <div class="stat-card"><div class="label">Total Profit</div><div class="value" id="repProfit">-</div></div>
+    <div class="stat-card"><div class="label">Total Pending</div><div class="value" id="repPending" style="color:#B3462C;">-</div></div>
+    <div class="stat-card"><div class="label">Transactions</div><div class="value" id="repCount">-</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Customer</th><th>Item</th><th>Qty</th><th>Total</th><th>Paid</th><th>Pending</th><th>Profit</th></tr>
+    </thead>
+    <tbody id="reportTable"></tbody>
+  </table>
+</div>
+
+<script>
+async function loadFilters() {
+  const [customers, items] = await Promise.all([
+    fetch("/api/customers").then(r => r.json()),
+    fetch("/api/items").then(r => r.json()),
+  ]);
+  const custSelect = document.getElementById("customerFilter");
+  customers.forEach(c => custSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+  const itemSelect = document.getElementById("itemFilter");
+  items.forEach(i => itemSelect.innerHTML += `<option value="${i.id}">${i.name}</option>`);
+}
+
+function buildParams() {
+  const params = new URLSearchParams();
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  const customer = document.getElementById("customerFilter").value;
+  const item = document.getElementById("itemFilter").value;
+  const sort = document.getElementById("sortFilter").value;
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
+  if (customer) params.set("customer_id", customer);
+  if (item) params.set("item_id", item);
+  if (sort) params.set("sort", sort);
+  return params;
+}
+
+async function applyFilters() {
+  const params = buildParams();
+  const res = await fetch(`/api/reports/transactions?${params.toString()}`);
+  const data = await res.json();
+
+  document.getElementById("repRevenue").textContent = "₹" + data.total_revenue;
+  document.getElementById("repProfit").textContent = "₹" + data.total_profit;
+  document.getElementById("repPending").textContent = "₹" + data.total_pending;
+  document.getElementById("repCount").textContent = data.count;
+
+  const tbody = document.getElementById("reportTable");
+  tbody.innerHTML = "";
+  data.transactions.forEach(t => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${t.date}</td>
+        <td>${t.customer}</td>
+        <td>${t.item}</td>
+        <td>${t.qty}</td>
+        <td>₹${t.total}</td>
+        <td>₹${t.amount_paid}</td>
+        <td style="color:${t.pending > 0 ? '#B3462C' : '#3F6B4C'}; font-weight:600;">₹${t.pending}</td>
+        <td class="profit">₹${t.profit}</td>
+      </tr>`;
+  });
+}
+
+function quickMonth() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  document.getElementById("startDate").value = first.toISOString().slice(0, 10);
+  document.getElementById("endDate").value = last.toISOString().slice(0, 10);
+  applyFilters();
+}
+
+function clearFilters() {
+  document.getElementById("startDate").value = "";
+  document.getElementById("endDate").value = "";
+  document.getElementById("customerFilter").value = "";
+  document.getElementById("itemFilter").value = "";
+  document.getElementById("sortFilter").value = "date_desc";
+  applyFilters();
+}
+
+function downloadPdf() {
+  const params = buildParams();
+  window.open(`/api/reports/pdf?${params.toString()}`, "_blank");
+}
+
+loadFilters();
+applyFilters();
+</script>
+
+</body>
+</html>
