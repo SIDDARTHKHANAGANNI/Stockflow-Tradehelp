@@ -55,6 +55,7 @@ const API = "/api/items";
 async function loadItems() {
   const res = await fetch(API);
   const items = await res.json();
+  items.sort((a, b) => a.name.localeCompare(b.name));
   const tbody = document.getElementById("itemTable");
   tbody.innerHTML = "";
   items.forEach(i => {

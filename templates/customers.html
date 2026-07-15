@@ -32,6 +32,11 @@
     <div id="map"></div>
   </div>
 
+  <div class="card" style="margin-bottom:20px; max-width:320px;">
+    <label class="sf-modal-label">Filter by Place</label>
+    <select id="placeFilter"><option value="">All Places</option></select>
+  </div>
+
   <table>
     <thead>
       <tr><th>Name</th><th>Phone</th><th>Address</th><th>Location</th><th>Actions</th></tr>
@@ -59,9 +64,27 @@ map.on('click', function (e) {
   marker = L.marker([lat, lng]).addTo(map);
 });
 
+let allCustomers = [];
+
 async function loadCustomers() {
   const res = await fetch(API);
   const customers = await res.json();
+  allCustomers = customers.sort((a, b) => a.name.localeCompare(b.name));
+
+  populatePlaceFilter(allCustomers);
+  renderCustomers(allCustomers);
+}
+
+function populatePlaceFilter(customers) {
+  const places = [...new Set(customers.map(c => (c.address || "").trim()).filter(Boolean))].sort();
+  const select = document.getElementById("placeFilter");
+  const current = select.value;
+  select.innerHTML = '<option value="">All Places</option>';
+  places.forEach(p => select.innerHTML += `<option value="${p}">${p}</option>`);
+  select.value = current;
+}
+
+function renderCustomers(customers) {
   const tbody = document.getElementById("customerTable");
   tbody.innerHTML = "";
 
@@ -88,6 +111,12 @@ async function loadCustomers() {
     }
   });
 }
+
+document.getElementById("placeFilter").addEventListener("change", (e) => {
+  const place = e.target.value;
+  const filtered = place ? allCustomers.filter(c => (c.address || "").trim() === place) : allCustomers;
+  renderCustomers(filtered);
+});
 
 function editCustomer(c) {
   document.getElementById("customerId").value = c.id;

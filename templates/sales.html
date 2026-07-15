@@ -44,6 +44,8 @@ async function loadDropdowns() {
     fetch("/api/customers").then(r => r.json()),
     fetch("/api/items").then(r => r.json()),
   ]);
+  customers.sort((a, b) => a.name.localeCompare(b.name));
+  items.sort((a, b) => a.name.localeCompare(b.name));
   itemsCache = items;
 
   const custSelect = document.getElementById("customer_id");

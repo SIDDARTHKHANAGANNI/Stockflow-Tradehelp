@@ -71,6 +71,8 @@ async function loadFilters() {
     fetch("/api/customers").then(r => r.json()),
     fetch("/api/items").then(r => r.json()),
   ]);
+  customers.sort((a, b) => a.name.localeCompare(b.name));
+  items.sort((a, b) => a.name.localeCompare(b.name));
   const custSelect = document.getElementById("customerFilter");
   customers.forEach(c => custSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
   const itemSelect = document.getElementById("itemFilter");
