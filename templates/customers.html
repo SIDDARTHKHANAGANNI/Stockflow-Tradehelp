@@ -23,6 +23,7 @@
       <input type="text" id="name" placeholder="Name" required>
       <input type="text" id="phone" placeholder="Phone" required>
       <input type="text" id="address" placeholder="Address">
+      <input type="text" id="city" placeholder="Town / City">
       <input type="text" id="lat" placeholder="Latitude" readonly>
       <input type="text" id="lng" placeholder="Longitude" readonly>
       <div class="hint">Click on map to set location</div>
@@ -33,13 +34,13 @@
   </div>
 
   <div class="card" style="margin-bottom:20px; max-width:320px;">
-    <label class="sf-modal-label">Filter by Place</label>
+    <label class="sf-modal-label">Filter by Town / City</label>
     <select id="placeFilter"><option value="">All Places</option></select>
   </div>
 
   <table>
     <thead>
-      <tr><th>Name</th><th>Phone</th><th>Address</th><th>Location</th><th>Actions</th></tr>
+      <tr><th>Name</th><th>Phone</th><th>Address</th><th>City</th><th>Location</th><th>Actions</th></tr>
     </thead>
     <tbody id="customerTable"></tbody>
   </table>
@@ -69,14 +70,18 @@ let allCustomers = [];
 async function loadCustomers() {
   const res = await fetch(API);
   const customers = await res.json();
-  allCustomers = customers.sort((a, b) => a.name.localeCompare(b.name));
+  allCustomers = customers.sort((a, b) => {
+    const cityCompare = (a.city || "").localeCompare(b.city || "");
+    if (cityCompare !== 0) return cityCompare;
+    return a.name.localeCompare(b.name);
+  });
 
   populatePlaceFilter(allCustomers);
   renderCustomers(allCustomers);
 }
 
 function populatePlaceFilter(customers) {
-  const places = [...new Set(customers.map(c => (c.address || "").trim()).filter(Boolean))].sort();
+  const places = [...new Set(customers.map(c => (c.city || "").trim()).filter(Boolean))].sort();
   const select = document.getElementById("placeFilter");
   const current = select.value;
   select.innerHTML = '<option value="">All Places</option>';
@@ -98,6 +103,7 @@ function renderCustomers(customers) {
         <td>${c.name}</td>
         <td>${c.phone}</td>
         <td>${c.address || ""}</td>
+        <td>${c.city || ""}</td>
         <td>${hasLocation ? "📍 set" : "—"}</td>
         <td>
           <button class="edit-btn" onclick='editCustomer(${JSON.stringify(c)})'>Edit</button>
@@ -114,7 +120,7 @@ function renderCustomers(customers) {
 
 document.getElementById("placeFilter").addEventListener("change", (e) => {
   const place = e.target.value;
-  const filtered = place ? allCustomers.filter(c => (c.address || "").trim() === place) : allCustomers;
+  const filtered = place ? allCustomers.filter(c => (c.city || "").trim() === place) : allCustomers;
   renderCustomers(filtered);
 });
 
@@ -123,6 +129,7 @@ function editCustomer(c) {
   document.getElementById("name").value = c.name;
   document.getElementById("phone").value = c.phone;
   document.getElementById("address").value = c.address || "";
+  document.getElementById("city").value = c.city || "";
   document.getElementById("lat").value = c.lat || "";
   document.getElementById("lng").value = c.lng || "";
   document.getElementById("submitBtn").textContent = "Update Customer";
@@ -151,6 +158,7 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
     name: document.getElementById("name").value,
     phone: document.getElementById("phone").value,
     address: document.getElementById("address").value,
+    city: document.getElementById("city").value,
     lat: lat ? parseFloat(lat) : null,
     lng: lng ? parseFloat(lng) : null,
   };

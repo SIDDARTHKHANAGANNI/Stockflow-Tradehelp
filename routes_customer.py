@@ -13,11 +13,16 @@ def add_customer():
     if not data.get("name") or not data.get("phone"):
         return jsonify({"error": "name and phone required"}), 400
 
+    city = data.get("city")
+    if city:
+        city = city.strip().title()
+
     customer = Customer(
         user_id=current_user_id(),
         name=data["name"],
         phone=data["phone"],
         address=data.get("address"),
+        city=city,
         lat=data.get("lat"),
         lng=data.get("lng"),
     )
@@ -53,6 +58,8 @@ def update_customer(customer_id):
     customer.name = data.get("name", customer.name)
     customer.phone = data.get("phone", customer.phone)
     customer.address = data.get("address", customer.address)
+    if data.get("city"):
+        customer.city = data["city"].strip().title()
     customer.lat = data.get("lat", customer.lat)
     customer.lng = data.get("lng", customer.lng)
 

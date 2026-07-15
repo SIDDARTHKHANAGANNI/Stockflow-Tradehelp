@@ -32,6 +32,7 @@ class Customer(db.Model):
     name = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.String(255))
+    city = db.Column(db.String(120))
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -44,6 +45,7 @@ class Customer(db.Model):
             "name": self.name,
             "phone": self.phone,
             "address": self.address,
+            "city": self.city,
             "lat": self.lat,
             "lng": self.lng,
         }
