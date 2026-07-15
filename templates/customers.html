@@ -55,6 +55,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+// Leaflet can miscalculate its size if the container's layout
+// isn't finalized yet (common on mobile where the map stacks below
+// the form). Force a recalculation after paint and on resize/rotate.
+setTimeout(() => map.invalidateSize(), 200);
+window.addEventListener("resize", () => map.invalidateSize());
+window.addEventListener("orientationchange", () => setTimeout(() => map.invalidateSize(), 200));
+
 let marker;
 let allMarkers = [];
 
