@@ -9,6 +9,7 @@ from routes_analytics import analytics_bp
 from routes_email import email_bp
 from routes_reports import reports_bp
 from routes_auth import auth_bp
+from routes_assistant import assistant_bp
 from auth import login_required
 
 
@@ -29,6 +30,7 @@ def create_app():
     app.register_blueprint(email_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(assistant_bp)
 
     @app.route("/")
     def health():

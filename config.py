@@ -9,6 +9,7 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev")
     SMTP_USER = os.getenv("SMTP_USER")
     SMTP_PASS = os.getenv("SMTP_PASS")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
     # Serverless-safe: recycle connections quickly, check aliveness before use.
     # Prevents "connection error" on Vercel where instances are short-lived.
