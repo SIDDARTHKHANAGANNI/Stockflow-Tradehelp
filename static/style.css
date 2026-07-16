@@ -337,7 +337,7 @@ tr.low-stock { background: #FBEFEA; }
 
   .form-grid { grid-template-columns: 1fr; }
 
-  .layout > #map { flex: none !important; }
+  #mapWrapper { flex: none !important; min-width: 0 !important; width: 100% !important; }
   #map { width: 100% !important; min-width: 0 !important; height: 260px !important; }
 
   .chart-box { height: 280px; padding: 12px; }

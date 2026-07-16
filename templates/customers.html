@@ -31,7 +31,13 @@
       <button type="submit" id="submitBtn">Add Customer</button>
     </form>
 
-    <div id="map"></div>
+    <div id="mapWrapper" style="flex:1; min-width:300px;">
+      <div style="position:relative; margin-bottom:10px;">
+        <input type="text" id="mapSearch" placeholder="Search a place (e.g. Gokak, Belagavi)" style="margin:0;" autocomplete="off">
+        <div id="searchResults" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--color-surface); border:1px solid var(--color-border); border-radius:6px; z-index:500; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.12);"></div>
+      </div>
+      <div id="map"></div>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom:20px; max-width:320px;">
@@ -71,6 +77,70 @@ map.on('click', function (e) {
   document.getElementById("lng").value = lng.toFixed(6);
   if (marker) map.removeLayer(marker);
   marker = L.marker([lat, lng]).addTo(map);
+});
+
+// Location search via Nominatim (OpenStreetMap's free geocoding service)
+let searchDebounce;
+const searchInput = document.getElementById("mapSearch");
+const resultsBox = document.getElementById("searchResults");
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchDebounce);
+  const query = searchInput.value.trim();
+  if (query.length < 3) {
+    resultsBox.style.display = "none";
+    return;
+  }
+  searchDebounce = setTimeout(() => runSearch(query), 400);
+});
+
+async function runSearch(query) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`;
+    const res = await fetch(url);
+    const results = await res.json();
+
+    if (!results.length) {
+      resultsBox.innerHTML = '<div style="padding:10px; color:var(--color-text-muted); font-size:13px;">No results found</div>';
+      resultsBox.style.display = "block";
+      return;
+    }
+
+    resultsBox.innerHTML = results.map(r => `
+      <div class="search-result-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.replace(/"/g, '&quot;')}"
+           style="padding:10px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--color-border);">
+        ${r.display_name}
+      </div>`).join("");
+    resultsBox.style.display = "block";
+
+    resultsBox.querySelectorAll(".search-result-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const lat = parseFloat(item.dataset.lat);
+        const lon = parseFloat(item.dataset.lon);
+        selectSearchResult(lat, lon, item.dataset.name);
+      });
+      item.addEventListener("mouseenter", () => item.style.background = "var(--color-bg)");
+      item.addEventListener("mouseleave", () => item.style.background = "transparent");
+    });
+  } catch (err) {
+    resultsBox.style.display = "none";
+  }
+}
+
+function selectSearchResult(lat, lon, name) {
+  map.setView([lat, lon], 15);
+  if (marker) map.removeLayer(marker);
+  marker = L.marker([lat, lon]).addTo(map);
+  document.getElementById("lat").value = lat.toFixed(6);
+  document.getElementById("lng").value = lon.toFixed(6);
+  searchInput.value = name.split(",")[0];
+  resultsBox.style.display = "none";
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target !== searchInput && !resultsBox.contains(e.target)) {
+    resultsBox.style.display = "none";
+  }
 });
 
 let allCustomers = [];
