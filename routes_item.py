@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Item, StockLog
+from models import db, Item, StockLog, Transaction
 from auth import login_required, current_user_id
 
 item_bp = Blueprint("item_bp", __name__, url_prefix="/api/items")
@@ -98,6 +98,7 @@ def delete_item(item_id):
     if not item:
         return jsonify({"error": "item not found"}), 404
 
+    Transaction.query.filter_by(item_id=item_id).delete()
     StockLog.query.filter_by(item_id=item_id).delete()
     db.session.delete(item)
     db.session.commit()

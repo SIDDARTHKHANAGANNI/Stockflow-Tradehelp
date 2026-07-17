@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Customer
+from models import db, Customer, Transaction, Item, StockLog
 from auth import login_required, current_user_id
 
 customer_bp = Blueprint("customer_bp", __name__, url_prefix="/api/customers")
@@ -74,6 +74,15 @@ def delete_customer(customer_id):
     if not customer:
         return jsonify({"error": "customer not found"}), 404
 
+    # restore stock for any past sales to this customer before removing their history
+    txns = Transaction.query.filter_by(customer_id=customer_id).all()
+    for t in txns:
+        item = Item.query.get(t.item_id)
+        if item:
+            item.current_stock += t.qty
+            db.session.add(StockLog(item_id=item.id, change_qty=t.qty, reason="customer deleted"))
+
+    Transaction.query.filter_by(customer_id=customer_id).delete()
     db.session.delete(customer)
     db.session.commit()
     return jsonify({"message": "customer deleted"})
